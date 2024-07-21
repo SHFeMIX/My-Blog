@@ -1,182 +1,144 @@
 ## Markdown Content
 
-div style="height: 23px" v-for="row in canvas">
-    <div :style="{backgroundColor: !item ? 'white' : (item == 1 ? 'black' : 'red')}" class="block"
-        v-for="item in row"></div>
+
+<div class="canvas" v-for="row in canvas">
+    <div :style="{backgroundColor: !item ? 'white' : (item == 1 ? 'black' : 'red')}" v-for="item in row"></div>
 </div>
 
-<br />
 
-<div class="buttonContainer">
-    <button @click="move('ArrowUp')">Up</button>
-</div>
+<script setup>
+import { reactive, onMounted } from 'vue'
 
-<div class="buttonContainer">
-    <button @click="move('ArrowLeft')">Left</button>
-    <button @click="move('ArrowDown')">Down</button>
-    <button @click="move('ArrowRight')">Right</button>
-</div>
-   
+const size = 15
+let temp = []
+for (let i = 0; i < size; i++) {
+    temp.push([])
+    for (let j = 0; j < size; j++) {
+        temp[i].push(0)
+    }
+}
+const canvas = reactive(temp)
 
-<script>
-    import vue as Vue from 'vue'
+function setAddr(addr, bit) {
+    canvas[addr[0]][addr[1]] = bit
+}
 
-    export default Vue.defineComponent({
+const bodyList = []
 
-        data() {
-            const size = 15
-            let canvas = []
-            for (let i = 0; i < size; i++) {
-                canvas.push([])
-                for (let j = 0; j < size; j++) {
-                    canvas[i].push(0)
-                }
-            }
+function addrInList(addr) {
+    return JSON.stringify(bodyList).indexOf(JSON.stringify(addr)) != -1
+}
 
-            return {
-                canvas: canvas,
-                direction: undefined,
-                bodyList: [],
-                movement: undefined,
-                acceptSet: false
-            }
-        },
+function newApple() {
+    let newAddr = undefined
+    do {
+        newAddr = [Math.floor(Math.random() * canvas.length), Math.floor(Math.random() * canvas.length)]
+    } while (addrInList(newAddr))
 
-        methods: {
-            setAddr(addr, bit) {
-                this.canvas[addr[0]][addr[1]] = bit
-            },
+    return newAddr
+}
 
-            addrInList(addr) {
-                return JSON.stringify(this.bodyList).indexOf(JSON.stringify(addr)) != -1
-            },
+const initHead = newApple()
+setAddr(initHead, 1)
+bodyList.push(initHead)
 
-            autoMove() {
-                // 计算出新的头
-                let head = [...this.bodyList[this.bodyList.length - 1]]
 
-                if (this.direction == 'ArrowRight') {
-                    head[1] += 1
-                }
-                if (this.direction == 'ArrowLeft') {
-                    head[1] -= 1
-                }
-                if (this.direction == 'ArrowUp') {
-                    head[0] -= 1
-                }
-                if (this.direction == 'ArrowDown') {
-                    head[0] += 1
-                }
+let direction = undefined
+const up_space = initHead[0]
+const down_space = canvas.length - 1 - initHead[0]
+const left_space = initHead[1]
+const right_space = canvas.length - 1 - initHead[1]
 
-                // 如果头出界或者已经在bodyList里就判定失败
-                if (head.indexOf(-1) != -1 || head.indexOf(this.canvas.length) != -1 || this.addrInList(head)) { // 在这里写失败的逻辑，head的x和y小于0或者等于canvas.length，或者head已经在bodyList里了（JSON.strinfy比较两个字符串一个是否包含另一个）
-                    alert('游戏失败')
-                    clearInterval(this.movement)
-                    return
-                }
+const max_space = Math.max(up_space, down_space, left_space, right_space)
+if (max_space == up_space) {
+    direction = 'ArrowUp'
+}
+else if (max_space == down_space) {
+    direction = 'ArrowDown'
+}
+else if (max_space == left_space) {
+    direction = 'ArrowLeft'
+}
+else {
+    direction = 'ArrowRight'
+}
 
-                this.bodyList.push(head)
+setAddr(newApple(), 2)
 
-                // 如果没吃到苹果,尾巴消掉
-                if (!this.canvas[head[0]][head[1]]) {
-                    this.setAddr(this.bodyList.shift(), 0)
-                }
-                else {
-                    // 吃到了就生成一个新苹果
-                    this.setAddr(this.newApple(), 2)
-                }
+let acceptSet = false
 
-                this.setAddr(head, 1)
-                this.acceptSet = true
-            },
+document.addEventListener('keydown', (event) => {
+    if (!acceptSet) {
+        return
+    }
+    if (direction == 'ArrowUp' && event.key == 'ArrowDown') {
+        return
+    }
+    if (direction == 'ArrowDown' && event.key == 'ArrowUp') {
+        return
+    }
+    if (direction == 'ArrowLeft' && event.key == 'ArrowRight') {
+        return
+    }
+    if (direction == 'ArrowRight' && event.key == 'ArrowLeft') {
+        return
+    }
 
-            newApple() {
-                // 0-canvas.length之间取随机数取两次，如果这俩坐标在bodyList里就重新去（还是JSON.strify判断在不在）
-                do {
-                    newAddr = [Math.floor(Math.random() * this.canvas.length), Math.floor(Math.random() * this.canvas.length)]
-                } while (this.addrInList(newAddr))
+    direction = event.key
+    acceptSet = false
+})
 
-                return newAddr
-            },
+function autoMove() {
+    let head = [...bodyList[bodyList.length - 1]]
 
-            move(direction) {
-                if (!this.acceptSet) {
-                    return
-                }
-                // 不能倒着走
-                if (this.direction == 'ArrowUp' && direction == 'ArrowDown') {
-                    return
-                }
-                if (this.direction == 'ArrowDown' && direction == 'ArrowUp') {
-                    return
-                }
-                if (this.direction == 'ArrowLeft' && direction == 'ArrowRight') {
-                    return
-                }
-                if (this.direction == 'ArrowRight' && direction == 'ArrowLeft') {
-                    return
-                }
+    if (direction == 'ArrowRight') {
+        head[1] += 1
+    }
+    if (direction == 'ArrowLeft') {
+        head[1] -= 1
+    }
+    if (direction == 'ArrowUp') {
+        head[0] -= 1
+    }
+    if (direction == 'ArrowDown') {
+        head[0] += 1
+    }
 
-                this.direction = direction
-                this.acceptSet = false
-            }
-        },
+    if (head.indexOf(-1) != -1 || head.indexOf(canvas.length) != -1 || addrInList(head)) { // 在这里写失败的逻辑，head的x和y小于0或者等于canvas.length，或者head已经在bodyList里了（JSON.strinfy比较两个字符串一个是否包含另一个）
+        alert('游戏失败')
+        clearInterval(movement)
+        return
+    }
 
-        mounted() {
-            document.addEventListener('keydown', (event) => { this.move(event.key) })
+    bodyList.push(head)
 
-            //随机出生地点，方向 （随机一个坐标，上下左右哪个方向空间最大就往哪
-            initHead = this.newApple()
-            this.setAddr(initHead, 1)
-            this.bodyList.push(initHead)
+    if (!canvas[head[0]][head[1]]) {
+        setAddr(bodyList.shift(), 0)
+    }
+    else {
+        setAddr(newApple(), 2)
+    }
 
-            up_space = initHead[0]
-            down_space = this.canvas.length - 1 - initHead[0]
-            left_space = initHead[1]
-            right_space = this.canvas.length - 1 - initHead[1]
+    setAddr(head, 1)
+    acceptSet = true
+}
 
-            max_space = Math.max(up_space, down_space, left_space, right_space)
-            if (max_space == up_space) {
-                this.direction = 'ArrowUp'
-            }
-            else if (max_space == down_space) {
-                this.direction = 'ArrowDown'
-            }
-            else if (max_space == left_space) {
-                this.direction = 'ArrowLeft'
-            }
-            else {
-                this.direction = 'ArrowRight'
-            }
-
-            // 随机一个苹果
-            this.setAddr(this.newApple(), 2)
-
-            // 开始自动移动
-            this.movement = setInterval(this.autoMove, 500)
-        }
-
-    })
-
+const movement = setInterval(autoMove, 500)
+      
 </script>
 
 <style>
-    .block {
-        border: solid;
-        border-color: black;
-        width: 20px;
-        height: 20px;
-        display: inline-block;
-    }
-
-    .buttonContainer {
-        display: flex;
-        justify-content: center;
-    }
-
-    .buttonContainer button {
-        margin: 10px;
-        width: 70px;
-        height: 50px;
+    .canvas {
+       display: flex;
+       
+        > * {
+            width: 20px;
+            height: 20px;
+            border: solid 1px;
+        }
     }
 </style>
+
+
+
+

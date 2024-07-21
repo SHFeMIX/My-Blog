@@ -7,12 +7,15 @@ hero:
   text: "A VitePress Site"
   tagline: My great project tagline
   actions:
-    - theme: brand
+    - theme: alt
       text: Markdown Examples
       link: /markdown-examples
     - theme: alt
       text: API Examples
       link: /api-examples
+    - theme: brand
+      text: Snack Game
+      link: /snack
 
 features:
   - title: Feature A
